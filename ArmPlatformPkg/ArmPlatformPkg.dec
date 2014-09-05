@@ -111,6 +111,9 @@
   gArmPlatformTokenSpaceGuid.PL011UartInteger|0|UINT32|0x00000020
   gArmPlatformTokenSpaceGuid.PL011UartFractional|0|UINT32|0x0000002D
 
+  ## SysReg
+  gArmPlatformTokenSpaceGuid.PcdSysRegBase|0x0|UINT32|0x0000003F
+
   ## PL061 GPIO
   gArmPlatformTokenSpaceGuid.PcdPL061GpioBase|0x0|UINT32|0x00000025
 
