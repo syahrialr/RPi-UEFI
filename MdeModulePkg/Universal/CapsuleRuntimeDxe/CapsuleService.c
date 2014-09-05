@@ -31,6 +31,14 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/BaseLib.h>
 #include <Library/PrintLib.h>
 #include <Library/BaseMemoryLib.h>
+
+#include <Library/IoLib.h>
+#include <Library/UefiLib.h>
+#include <Library/UefiRuntimeLib.h>
+#include <Guid/EventGroup.h>
+
+EFI_EVENT mCapsuleNotifyEvent;
+
 //
 // Handle for the installation of Capsule Architecture Protocol.
 //
@@ -107,6 +115,138 @@ VOID
 SaveLongModeContext (
   VOID
   );
+
+/* -------------------------------------------------------------------------- */
+
+static unsigned int *led_reg;
+static unsigned int *pl011_dr;
+static unsigned int *pl011_fr;
+static int run_from_kernel = 0;
+
+VOID EFIAPI SysLedNotifyEvent(IN EFI_EVENT Event, IN VOID *Context)
+{
+	EfiConvertPointer(0, (VOID **)&led_reg);
+	EfiConvertPointer(0, (VOID **)&pl011_dr);
+	EfiConvertPointer(0, (VOID **)&pl011_fr);
+	run_from_kernel = 1;
+}
+
+#define VE_PERIPH_BASE		0x1c000000
+
+#define SYS_REG_OFFSET		0x00010000
+#define SYS_REG			(VE_PERIPH_BASE + SYS_REG_OFFSET)
+#define SYS_LED_OFFSET		0x0008
+#define SYS_LED_REG		(SYS_REG + SYS_LED_OFFSET)
+#define S6LED_1			(1 << 1)
+
+#define PL011_OFFSET		0x00090000
+#define PL011_BASE		(VE_PERIPH_BASE + PL011_OFFSET)
+/* Data register */
+#define PL011_DR		(PL011_BASE + 0x00)
+/* Flag register */
+#define PL011_FR		(PL011_BASE + 0x18)
+/* "Transmit FIFO full" flag */
+#define PL011_FR_TXFF		(1 << 5)
+
+static void pl011_putc(int c)
+{
+	/* Wait until there is space in the FIFO */
+	while (MmioRead32((unsigned long long)pl011_fr) & PL011_FR_TXFF)
+		;
+
+	/* Send the character */
+	MmioWrite32((unsigned long long)pl011_dr, c);
+
+	/* Wait until there is space in the FIFO */
+	while (MmioRead32((unsigned long long)pl011_fr) & PL011_FR_TXFF)
+		;
+}
+
+static void pl011_puts(char *s) {
+	while (*s != '\0') {
+		if (*s == '\n')
+			pl011_putc('\r');
+		pl011_putc(*s++);
+	}
+}
+
+static void led_blink(void)
+{
+	static int led_on = 0;
+	unsigned int val;
+
+	if (run_from_kernel) {
+		val = MmioRead32((unsigned long long)led_reg);
+		if (led_on)
+			val &= ~S6LED_1;
+		else
+			val |= S6LED_1;
+		led_on = !led_on;
+		MmioWrite32((unsigned long long)led_reg, val);
+	}
+}
+
+static void subscribe_for_mapping(void)
+{
+	EFI_STATUS status;
+
+	/* First run */
+	if (led_reg == NULL) {
+		led_reg = (unsigned int *)SYS_LED_REG;
+		pl011_dr = (unsigned int *)PL011_DR;
+		pl011_fr = (unsigned int *)PL011_FR;
+
+		// Register SetVirtualAddressMap() notify function
+		status = gBS->CreateEventEx(
+				EVT_NOTIFY_SIGNAL,
+				TPL_NOTIFY,
+				SysLedNotifyEvent,
+				NULL,
+				&gEfiEventVirtualAddressChangeGuid,
+				&mCapsuleNotifyEvent
+				);
+		ASSERT_EFI_ERROR(status);
+	}
+}
+
+/* Prints val and \n. Returns val string length */
+static int print_val(unsigned long val)
+{
+	int pos = 0;
+	char digit_string[256];
+
+	/* make string from digit (reversed) */
+	do {
+		int digit;
+		char digit_char;
+
+		digit = val - (val / 10) * 10;
+		digit_char = 0x30 + digit;
+		digit_string[pos++] = digit_char;
+		val /= 10;
+	} while (val != 0);
+
+	/* reverse string */
+	if (pos > 1) {
+		int i;
+
+		for (i = 0; i < pos / 2; ++i) {
+			char tmp;
+
+			tmp = digit_string[i];
+			digit_string[i] = digit_string[pos-i-1];
+			digit_string[pos-i-1] = tmp;
+		}
+	}
+
+	digit_string[pos++] = '\n';
+	digit_string[pos++] = '\0';
+	pl011_puts(digit_string);
+
+	return pos; /* length */
+}
+
+/* -------------------------------------------------------------------------- */
 
 /**
   Passes capsules to the firmware with both virtual and physical mapping. Depending on the intended
@@ -463,6 +603,10 @@ CapsuleServiceInitialize (
   )
 {
   EFI_STATUS  Status;
+
+	subscribe_for_mapping();
+	(void)led_blink; /* unused */
+	(void)print_val; /* unused */
 
   mMaxSizePopulateCapsule = PcdGet32(PcdMaxSizePopulateCapsule);
   mMaxSizeNonPopulateCapsule = PcdGet32(PcdMaxSizeNonPopulateCapsule);

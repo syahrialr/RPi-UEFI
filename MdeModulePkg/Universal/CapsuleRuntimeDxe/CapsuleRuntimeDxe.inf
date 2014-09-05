@@ -44,7 +44,9 @@
   MdeModulePkg/MdeModulePkg.dec
 
 [LibraryClasses]
+  IoLib
   UefiBootServicesTableLib
+  UefiLib
   PcdLib
   DebugLib
   UefiRuntimeServicesTableLib
@@ -64,6 +66,7 @@
   ## SOMETIMES_PRODUCES   ## Variable:L"CapsuleUpdateData" # (Process across reset capsule image) for capsule updated data
   ## SOMETIMES_PRODUCES   ## Variable:L"CapsuleLongModeBuffer" # The long mode buffer used by IA32 Capsule PEIM to call X64 CapsuleCoalesce code to handle >4GB capsule blocks
   gEfiCapsuleVendorGuid
+  gEfiEventVirtualAddressChangeGuid		## CONSUMES ## Event
   gEfiFmpCapsuleGuid                            ## SOMETIMES_CONSUMES   ## GUID # FMP capsule GUID
 
 [Protocols]
