@@ -45,3 +45,4 @@
   gArmPlatformTokenSpaceGuid.PcdPL031RtcBase
   gArmPlatformTokenSpaceGuid.PcdPL031RtcPpmAccuracy
   gArmPlatformTokenSpaceGuid.PcdSysRegBase
+  gArmPlatformTokenSpaceGuid.PcdPL011Base

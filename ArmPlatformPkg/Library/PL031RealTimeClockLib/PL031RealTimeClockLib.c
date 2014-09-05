@@ -28,6 +28,7 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/UefiRuntimeLib.h>
+#include <Library/SerialPortLib.h>
 
 #include <Protocol/RealTimeClock.h>
 
@@ -45,6 +46,7 @@ STATIC EFI_EVENT              mRtcVirtualAddrChangeEvent;
 STATIC UINTN                  mPL031RtcBase;
 STATIC EFI_RUNTIME_SERVICES   *mRT;
 STATIC UINTN         mSysRegBase;
+STATIC UINTN         mPL011Base;
 
 EFI_STATUS
 IdentifyPL031 (
@@ -611,6 +613,7 @@ LibRtcVirtualNotifyEvent (
   EfiConvertPointer (0x0, (VOID**)&mPL031RtcBase);
   EfiConvertPointer (0x0, (VOID**)&mRT);
   EfiConvertPointer (0x0, (VOID**)&mSysRegBase);
+  EfiConvertPointer (0x0, (VOID**)&mPL011Base);
   return;
 }
 
@@ -637,6 +640,7 @@ LibRtcInitialize (
   // Initialize RTC Base Address
   mPL031RtcBase = PcdGet32 (PcdPL031RtcBase);
   mSysRegBase = PcdGet32 (PcdSysRegBase);
+  mPL011Base = PcdGet32 (PcdPL011Base);
 
   // Declare the controller as EFI_MEMORY_RUNTIME
   Status = gDS->AddMemorySpace (
@@ -664,6 +668,20 @@ LibRtcInitialize (
   }
   Status = gDS->SetMemorySpaceAttributes (mSysRegBase, SIZE_4KB,
       EFI_MEMORY_UC | EFI_MEMORY_RUNTIME);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  // PL011
+  Status = gDS->AddMemorySpace (
+                  EfiGcdMemoryTypeMemoryMappedIo,
+                  mPL011Base, SIZE_64KB,
+                  EFI_MEMORY_UC | EFI_MEMORY_RUNTIME
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+  Status = gDS->SetMemorySpaceAttributes (mPL011Base, SIZE_4KB, EFI_MEMORY_UC | EFI_MEMORY_RUNTIME);
   if (EFI_ERROR (Status)) {
     return Status;
   }

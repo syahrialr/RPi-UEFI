@@ -144,6 +144,9 @@
   ## SysReg
   gArmPlatformTokenSpaceGuid.PcdSysRegBase|0x1C010000
 
+  ## PL011 (for remap)
+  gArmPlatformTokenSpaceGuid.PcdPL011Base|0x1C090000
+
   ## PL031 RealTimeClock
   gArmPlatformTokenSpaceGuid.PcdPL031RtcBase|0x1C170000
 
