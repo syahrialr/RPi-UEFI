@@ -44,6 +44,61 @@ UINTN       mTimes      = 0;
 UINT32      mMaxSizePopulateCapsule     = 0;
 UINT32      mMaxSizeNonPopulateCapsule  = 0;
 
+static char *shmem_pos;
+
+static void shmem_init_pos(char *pos)
+{
+	shmem_pos = pos;
+}
+
+static void shmem_puts(char *s)
+{
+	while (*s)
+		*shmem_pos++ = *s++;
+}
+
+static void shmem_fin(void)
+{
+	*shmem_pos = '\0';
+}
+
+/* Prints val and \n. Returns val string length */
+static int shmem_print_val(unsigned long val)
+{
+	int pos = 0;
+	char digit_string[256];
+
+	/* make string from digit (reversed) */
+	do {
+		int digit;
+		char digit_char;
+
+		digit = val - (val / 10) * 10;
+		digit_char = 0x30 + digit;
+		digit_string[pos++] = digit_char;
+		val /= 10;
+	} while (val != 0);
+
+	/* reverse string */
+	if (pos > 1) {
+		int i;
+
+		for (i = 0; i < pos / 2; ++i) {
+			char tmp;
+
+			tmp = digit_string[i];
+			digit_string[i] = digit_string[pos-i-1];
+			digit_string[pos-i-1] = tmp;
+		}
+	}
+
+	digit_string[pos++] = '\n';
+	digit_string[pos++] = '\0';
+	shmem_puts(digit_string);
+
+	return pos; /* length */
+}
+
 /**
   Create the variable to save the base address of page table and stack
   for transferring into long mode in IA32 PEI.
@@ -100,12 +155,47 @@ UpdateCapsule (
   CHAR16                    CapsuleVarName[30];
   CHAR16                    *TempVarName;  
   
+	int i;
+
   //
   // Capsule Count can't be less than one.
   //
   if (CapsuleCount < 1) {
     return EFI_INVALID_PARAMETER;
   }
+
+	shmem_init_pos( (char *) (
+		((UINT64)(((*CapsuleHeaderArray)[0]).Flags)) +
+		(((UINT64)(((*CapsuleHeaderArray)[1]).Flags)) << 32)
+	));
+
+	shmem_puts("### CapsuleCount: ");
+	shmem_print_val(CapsuleCount);
+
+	for (i = 0; i < CapsuleCount; ++i) {
+		int j;
+
+		shmem_puts("### Content of capsule #");
+		shmem_print_val(i);
+
+		/* Do not print flags as it contains arbitrary address */
+#if 0
+		shmem_puts("### Flags: ");
+		shmem_print_val(((*CapsuleHeaderArray)[i]).Flags);
+#endif
+
+		shmem_puts("### Guid:\n");
+		shmem_print_val(((*CapsuleHeaderArray)[i]).CapsuleGuid.Data1);
+		shmem_print_val(((*CapsuleHeaderArray)[i]).CapsuleGuid.Data2);
+		shmem_print_val(((*CapsuleHeaderArray)[i]).CapsuleGuid.Data3);
+		for (j = 0; j < 8; ++j)
+			shmem_print_val(((*CapsuleHeaderArray)[i])
+					.CapsuleGuid.Data4[j]);
+		shmem_puts("\n");
+	}
+	shmem_fin();
+
+	return EFI_SUCCESS;
 
   NeedReset         = FALSE;
   InitiateReset     = FALSE;
