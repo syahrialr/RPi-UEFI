@@ -396,7 +396,7 @@
   #   TRUE  - Supports update capsule across a system reset.<BR>
   #   FALSE - Does not support update capsule across a system reset.<BR>
   # @Prompt Enable update capsule across a system reset.
-  gEfiMdeModulePkgTokenSpaceGuid.PcdSupportUpdateCapsuleReset|FALSE|BOOLEAN|0x0001001d
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSupportUpdateCapsuleReset|TRUE|BOOLEAN|0x0001001d
 
   ## Indicates if all PCD PPI services will be enabled.<BR><BR>
   #   TRUE  - All PCD PPI services will be produced.<BR>
