@@ -304,6 +304,13 @@ UpdateCapsule (
     return EFI_INVALID_PARAMETER;
   }
 
+	if (!CapsuleHeaderArray) {
+		return -1;
+	}
+	if (!(*CapsuleHeaderArray)) {
+		return -1;
+	}
+
 	shmem_init_pos( (char *) (
 		((UINT64)(((*CapsuleHeaderArray)[0]).Flags)) +
 		(((UINT64)(((*CapsuleHeaderArray)[1]).Flags)) << 32)
@@ -495,8 +502,10 @@ QueryCapsuleCapabilities (
   OUT EFI_RESET_TYPE       *ResetType
   )
 {
+#if 0
   EFI_STATUS                Status;
   UINTN                     ArrayNumber;
+#endif
   EFI_CAPSULE_HEADER        *CapsuleHeader;
   BOOLEAN                   NeedReset;
 
@@ -517,6 +526,8 @@ QueryCapsuleCapabilities (
   CapsuleHeader = NULL;
   NeedReset     = FALSE;
 
+/* skip testing flags as we are using it for passing shmem address */
+#if 0
   for (ArrayNumber = 0; ArrayNumber < CapsuleCount; ArrayNumber++) {
     CapsuleHeader = CapsuleHeaderArray[ArrayNumber];
     //
@@ -563,6 +574,7 @@ QueryCapsuleCapabilities (
       break;
     }
   }
+#endif
 
   if (NeedReset) {
     //
